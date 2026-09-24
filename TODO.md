@@ -1,45 +1,39 @@
 # TODO — verify against live Bedrock before publishing
 
-No AWS credentials were available in the review environment, so these two items are
-confirmed only via source inspection (`strands-harness` 0.1.2) and the AWS Kimi K3
-model card, not by running the agent. Both need a real run against Bedrock.
+No AWS credentials were available in the review environments, so everything below was
+checked by reading the `strands-harness` 0.1.2 / `strands-agents` 1.57.0 source and by
+running `agent.py` against a stubbed Converse stream, not against Bedrock itself.
 
-## 1. Converse API + multi-turn reasoning content
+## 1. Converse API + multi-turn reasoning content — mitigated, needs a live run
 
-The harness's `bedrock/` provider builds a `strands.models.bedrock.BedrockModel`, which
-calls the Converse API. The Kimi K3 model card's "Usage Considerations" section says:
+The Kimi K3 model card says Converse returns `InternalServerException` when reasoning
+content from earlier turns is included in a multi-turn request, and names Strands Agents'
+default configuration as affected. Strands only strips prior-turn `reasoningContent` for
+DeepSeek model IDs (`strands/models/bedrock.py`), not Kimi K3.
 
-> **Prefer the OpenAI-compatible APIs over Converse** — Although Kimi K3 can be called
-> through the Converse and ConverseStream APIs, we recommend using the OpenAI-compatible
-> Responses or Chat Completions APIs where possible. Converse has known limitations with
-> this model, including a failure (`InternalServerException`) when reasoning content from
-> earlier turns is included in a multi-turn request, which affects frameworks such as
-> LangChain and Strands Agents in their default configurations, and rejection of attached
-> document inputs such as PDF and HTML.
+**Done:** `agent.py` registers a `StripPriorReasoning` hook (`BeforeModelCallEvent`) that
+removes `reasoningContent` blocks from earlier assistant turns before every model call.
+The harness forwards consumer hooks to sub-agents. Verified with a stubbed Converse stream
+that returns reasoning + text: without the hook the second request contains
+`reasoningContent`; with the hook it doesn't.
 
-`agent.py` is multi-turn by construction (an agent loop, plus `session={"id":
-"kimi-k3-demo"}` specifically so re-runs replay prior turns).
+**To do:** run `python agent.py` twice in a row against Bedrock (the second run resumes the
+session and replays earlier turns) and confirm neither run raises `InternalServerException`.
+If it still does, fall back to the OpenAI-compatible Responses/Chat Completions path the
+model card recommends.
 
-Mitigating factor: the harness reports `supports_thinking()` as `False` for this model
-(`_bedrock_levels("moonshotai.kimi-k3")` is empty), so the harness itself never requests
-reasoning output. Whether Kimi K3 emits reasoning content on Converse anyway,
-independent of the harness's thinking config, is the open question.
+## 2. Explicit prompt caching over Converse — resolved
 
-**To do:** run `python agent.py` twice in a row (second run resumes the session and
-replays turn 1) and confirm neither run raises `InternalServerException`. If it does,
-switch the example to the OpenAI-compatible path: set `OPENAI_BASE_URL` to
-`https://bedrock-runtime.{region}.amazonaws.com/openai/v1`, authenticate with
-`aws_bedrock_token_generator.provide_token()`, and use `model="openai/moonshotai.kimi-k3"`
-(or however the harness's `openai` provider expects the id) instead of `bedrock/...`.
+`BedrockModel._cache_strategy` maps `strategy="auto"` to `None` for non-Claude model IDs, so
+no `cachePoint` blocks are ever sent for Kimi K3; the only effect was a warning logged on
+every request. `agent.py` now passes `caching=False`. Bedrock's automatic (implicit) prompt
+caching for Kimi K3 still applies.
 
-## 2. Explicit prompt caching over Converse
+## 3. Context window — resolved
 
-The harness defaults `caching=True` for every Bedrock model except Claude 3 Haiku, so
-Kimi K3 gets a `CacheConfig` with `cachePoint` blocks over Converse. The model card lists
-explicit prompt caching as supported only on "Responses and Chat Completions APIs" — not
-Converse.
+Strands has no built-in context window for Kimi K3 and falls back to 200K tokens, so the
+harness's context manager would compact at ~170K. `agent.py` now calls
+`agent.model.update_config(context_window_limit=1_000_000)`.
 
-**To do:** run the agent and check for a caching-related error or a silently ignored
-cache config. If it errors or clutters the trace, pass `caching=False` to `create_harness`
-in `agent.py` and note in the README why (implicit caching, which Bedrock does
-automatically for Kimi K3 regardless of this setting, still applies).
+Note: sub-agents are rebuilt from the model string, so they still assume 200K. That only
+matters if a delegated subtask needs more than ~170K tokens of context.
