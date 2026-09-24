@@ -52,6 +52,46 @@ The agent reads each markdown file and writes a combined overview to `SUMMARY.md
 
 `agent.py` selects the model with `model="bedrock/global.moonshotai.kimi-k3"`. The `bedrock/` prefix picks the Bedrock provider and the rest is the inference profile ID.
 
+## How `agent.py` works
+
+```mermaid
+flowchart TD
+    Start(["python agent.py"]) --> Create
+
+    subgraph Setup["Setup (module load)"]
+        Create["create_harness()"]
+        Create --> Model["model = bedrock/global.moonshotai.kimi-k3"]
+        Create --> Session["session id = kimi-k3-demo<br/>(stored in ./.agent/sessions)"]
+        Create --> Cache["caching = False<br/>(explicit cache points are only for Claude)"]
+        Create --> Tools["builtin_tools"]
+        Tools --> Fetch["web_fetch → Claude Haiku 4.5<br/>summarizer on Bedrock"]
+        Tools -.->|"commented out"| Search["web_search → Exa"]
+        Create --> Hooks["hooks = StripPriorReasoning()"]
+        Model --> CW["model.update_config(<br/>context_window_limit=1M)"]
+    end
+
+    CW --> Main{"__name__ == '__main__'?"}
+    Main -->|yes| Run["agent(TASK)<br/>Summarize the markdown files → SUMMARY.md"]
+
+    subgraph Loop["Agent loop (per model call)"]
+        Run --> BMC["BeforeModelCallEvent"]
+        BMC --> Strip["StripPriorReasoning._strip()"]
+        Strip --> ForMsg{"For each message:<br/>role == assistant?"}
+        ForMsg -->|no| Skip["skip"]
+        ForMsg -->|yes| Filter["Remove reasoningContent blocks"]
+        Filter --> Empty{"Content now empty?"}
+        Empty -->|yes| Placeholder["Use placeholder:<br/>(reasoning omitted)"]
+        Empty -->|no| Keep["Keep filtered content"]
+        Skip --> Call
+        Placeholder --> Call
+        Keep --> Call["Bedrock Converse call → Kimi K3"]
+        Call --> ToolUse{"Tool use?"}
+        ToolUse -->|yes| Exec["Run tool: file I/O, web_fetch, sub-agents<br/>(sub-agents also get the hooks)"]
+        Exec --> BMC
+        ToolUse -->|no| Done(["Final answer"])
+    end
+```
+
 ## Resume a session
 
 `agent.py` uses a fixed `session={"id": "kimi-k3-demo"}`, so running it again continues the same conversation. Change the ID to start fresh. Sessions are stored under `./.agent/sessions`.
