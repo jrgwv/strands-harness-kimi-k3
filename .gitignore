@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.agent/
+REVIEW.md
+.vscode/
+Claude outputs/
+.pytest_cache/
