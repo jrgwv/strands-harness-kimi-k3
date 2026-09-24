@@ -8,7 +8,7 @@ Prerequisites:
 - AWS credentials configured (aws configure, IAM Identity Center, or an instance role)
 - Python 3.10+ and `pip install -r requirements.txt`
 
-Run from a directory that contains some markdown docs:
+Run from this directory (the agent reviews agent.py itself):
     python agent.py
 """
 
@@ -73,8 +73,9 @@ agent = create_harness(
 agent.model.update_config(context_window_limit=1_000_000)
 
 TASK = (
-    "Read every markdown file in this directory, summarize what each one covers, "
-    "and write a combined overview to SUMMARY.md."
+    "Read agent.py in this directory and explain what each Kimi K3-specific setting does. "
+    "Then fetch https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k3.html "
+    "and check whether agent.py covers the caveats it lists. Write your findings to REVIEW.md."
 )
 
 if __name__ == "__main__":

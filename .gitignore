@@ -4,6 +4,6 @@ __pycache__/
 venv/
 .env
 .agent/
-SUMMARY.md
+REVIEW.md
 .vscode/
 Claude outputs/

@@ -42,13 +42,13 @@ The harness uses your standard AWS configuration (`aws configure`, IAM Identity 
 
 ## Run
 
-Put a few markdown files in the directory (or run from a project's `docs/` folder), then:
+From the repo root:
 
 ```bash
 python agent.py
 ```
 
-The agent reads each markdown file and writes a combined overview to `SUMMARY.md`.
+The agent reviews its own code: it reads `agent.py`, explains each Kimi K3-specific setting, fetches the [Kimi K3 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k3.html) with `web_fetch`, checks whether `agent.py` covers the caveats it lists, and writes its findings to `REVIEW.md`. No input files needed. Change `TASK` at the bottom of `agent.py` to point the agent at your own work.
 
 `agent.py` selects the model with `model="bedrock/global.moonshotai.kimi-k3"`. The `bedrock/` prefix picks the Bedrock provider and the rest is the inference profile ID.
 
@@ -71,7 +71,7 @@ flowchart TD
     end
 
     CW --> Main{"__name__ == '__main__'?"}
-    Main -->|yes| Run["agent(TASK)<br/>Summarize the markdown files → SUMMARY.md"]
+    Main -->|yes| Run["agent(TASK)<br/>Review agent.py against the model card → REVIEW.md"]
 
     subgraph Loop["Agent loop (per model call)"]
         Run --> BMC["BeforeModelCallEvent"]
