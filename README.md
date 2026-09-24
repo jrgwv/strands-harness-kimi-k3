@@ -21,7 +21,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Optionally copy `.env.example` to `.env` to pin a Region; otherwise the harness uses your standard AWS configuration.
+The harness uses your standard AWS configuration (`aws configure`, IAM Identity Center, an instance role, or the usual `AWS_*` env vars). To pin a Region for a single run without changing your default profile: `AWS_REGION=us-west-2 python agent.py`.
 
 ## Run
 
@@ -41,7 +41,11 @@ The agent reads each markdown file and writes a combined overview to `SUMMARY.md
 
 ## Web search
 
-Kimi K3 has no native web search in Bedrock, so the harness disables that tool and logs a warning at startup. To search through Exa (third party, keyless free tier; set `EXA_API_KEY` to lift the rate limit), uncomment the `builtin_tools` line in `agent.py`.
+Kimi K3 has no native web search in Bedrock, so the harness disables that tool and logs a warning at startup. To search through Exa (third party, keyless free tier; set `EXA_API_KEY` to lift the rate limit), uncomment the `web_search` line in `agent.py`'s `builtin_tools`.
+
+## Web fetch summarizer
+
+`web_fetch` is on by default and normally delegates page summarization to a small model in the same provider family. The harness can't map Kimi K3 to a known family, so left unconfigured it would fall back to summarizing fetched pages with Kimi K3 itself -- a 1M-context model doing a job a small model handles fine, at Kimi K3's token price. `agent.py` pins `builtin_tools={"web_fetch": {"model": "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"}}` to use Claude Haiku on Bedrock instead, under the same AWS credentials.
 
 ## Kimi K3 inference profiles
 

@@ -23,9 +23,15 @@ agent = create_harness(
     # A fixed session ID lets you re-run the script and continue the same conversation.
     # Sessions are stored under ./.agent/sessions by default.
     session={"id": "kimi-k3-demo"},
-    # Kimi K3 has no native web search in Bedrock. To enable search through Exa
-    # (third party, keyless free tier; set EXA_API_KEY to lift the rate limit), uncomment:
-    # builtin_tools={"web_search": "exa"},
+    builtin_tools={
+        # Kimi K3 has no native web search in Bedrock. To enable search through Exa
+        # (third party, keyless free tier; set EXA_API_KEY to lift the rate limit), uncomment:
+        # "web_search": "exa",
+        # The harness can't identify Kimi K3's family to pick a small web_fetch summarizer,
+        # so left alone it falls back to Kimi K3 itself -- a 1M-context model summarizing
+        # single web pages. Pin a cheap Bedrock summarizer instead (same AWS credentials).
+        "web_fetch": {"model": "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"},
+    },
 )
 
 TASK = (
