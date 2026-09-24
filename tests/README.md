@@ -64,3 +64,8 @@ could be silently dropped instead of actually replayed.
 - Kimi K3 requires `maxTokens >= 16`, and because it is a reasoning model a tiny budget
   is consumed by `reasoningContent` before any text is emitted — the smoke test uses
   512 tokens so a text block is actually returned.
+- If the tests **skip**, read the skip message: it distinguishes *missing credentials*
+  and *an invalid/expired token* (an auth problem — refresh your credentials, e.g. your
+  `isengardcli`/`ada`/SSO login, and confirm with `aws sts get-caller-identity`) from the
+  model genuinely *not being available* in the Region. An invalid token is **not** a
+  Region problem — Kimi K3 is available in `us-east-1`.

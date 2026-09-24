@@ -17,9 +17,22 @@ import os
 
 import boto3
 import pytest
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
+
+# botocore error codes that mean "your credentials are missing/expired/invalid",
+# as opposed to "the model isn't available here".
+_AUTH_ERROR_CODES = {
+    "UnrecognizedClientException",  # invalid security token
+    "InvalidSignatureException",
+    "ExpiredToken",
+    "ExpiredTokenException",
+    "InvalidClientTokenId",
+    "AuthFailure",
+    "AccessDeniedException",  # authenticated but not authorized
+    "UnauthorizedException",
+}
 
 # The two inference profiles agent.py depends on.
 KIMI_K3 = "global.moonshotai.kimi-k3"
@@ -35,10 +48,11 @@ REASONING_BLOCK = {
 
 @pytest.fixture(scope="session")
 def bedrock():
-    """A bedrock-runtime client, or skip the whole session if unusable.
+    """A bedrock-runtime client, or skip the whole session with a specific reason.
 
-    Skips (rather than fails) when there are no credentials or when the account
-    lacks access to the Kimi K3 profile, so the suite is safe to collect anywhere.
+    Skips (rather than fails) so the suite is safe to collect anywhere, but the skip
+    message names the actual cause: missing credentials, an invalid/expired token, or
+    the model genuinely not being available/authorized in this Region.
     """
     client = boto3.client("bedrock-runtime", region_name=REGION)
     try:
@@ -48,8 +62,27 @@ def bedrock():
             # Kimi K3 requires maxTokens >= 16.
             inferenceConfig={"maxTokens": 16},
         )
-    except (ClientError, BotoCoreError) as exc:
-        pytest.skip(f"Bedrock/Kimi K3 not reachable in {REGION}: {type(exc).__name__}: {exc}")
+    except NoCredentialsError:
+        pytest.skip(
+            "No AWS credentials found. Set your profile before running, e.g. "
+            "`AWS_PROFILE=your-profile AWS_REGION=us-east-1 pytest tests -v`."
+        )
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code", "")
+        if code in _AUTH_ERROR_CODES:
+            pytest.skip(
+                f"AWS auth failed ({code}): credentials are missing, expired, or "
+                "invalid -- this is NOT a Region problem. Refresh your credentials "
+                "(e.g. re-run your isengardcli/ada/SSO login for the profile), confirm "
+                "with `aws sts get-caller-identity`, then re-run. Kimi K3 is available "
+                f"in {REGION}."
+            )
+        pytest.skip(
+            f"Bedrock/Kimi K3 not reachable in {REGION} ({code}): {exc}. "
+            "Check the model has access granted in this Region/account."
+        )
+    except BotoCoreError as exc:
+        pytest.skip(f"Could not reach Bedrock in {REGION}: {type(exc).__name__}: {exc}")
     return client
 
 
