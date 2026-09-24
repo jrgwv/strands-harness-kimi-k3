@@ -7,3 +7,4 @@ venv/
 REVIEW.md
 .vscode/
 Claude outputs/
+.pytest_cache/

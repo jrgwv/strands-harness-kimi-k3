@@ -52,6 +52,24 @@ The agent reviews its own code: it reads `agent.py`, explains each Kimi K3-speci
 
 `agent.py` selects the model with `model="bedrock/global.moonshotai.kimi-k3"`. The `bedrock/` prefix picks the Bedrock provider and the rest is the inference profile ID.
 
+## Tests
+
+The [`tests/`](tests/) directory holds live tests that exercise this example against
+Bedrock — model-access smoke checks, a characterization of how the Converse API handles
+replayed prior-turn reasoning, and an end-to-end run of `agent.py`. They cost a small
+amount of tokens and skip cleanly without credentials or model access:
+
+```bash
+pip install pytest
+AWS_PROFILE=your-profile AWS_REGION=us-east-1 pytest tests -m "not slow" -v   # fast (~30s)
+AWS_PROFILE=your-profile AWS_REGION=us-east-1 pytest tests -v                 # + end-to-end (~2-3 min)
+```
+
+See [`tests/README.md`](tests/README.md) for what each test proves, and
+[`RESULTS.md`](RESULTS.md) for a write-up of a full live run — including the one
+model-card caveat (the multi-turn reasoning `InternalServerException`) that could not be
+reproduced on the current endpoint.
+
 ## How `agent.py` works
 
 ```mermaid
