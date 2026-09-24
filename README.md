@@ -18,7 +18,7 @@ Frontier-adjacent quality at a lower price, with its strongest results on coding
 | LMArena Frontend Code Arena (Elo) | **1,679 (#1)** | 1,618 | — | 1,631 |
 | Vals Index | 57.8% | 63.7% | 67.2% | 66.0% |
 
-- **Cost:** 40% less per token than Claude Opus 5 and 70% less than Claude Fable 5. Cached input is $0.30 per 1M tokens, and Bedrock's Flex tier halves the price to $1.50 / $7.50 for jobs that can tolerate slower responses.
+- **Cost:** 40% less per token than Claude Opus 5 and 70% less than Claude Fable 5. Cached input is $0.30 per 1M tokens. Bedrock's Flex tier halves the price to $1.50 / $7.50 for jobs that can tolerate slower responses — but note Flex (like the other Bedrock service tiers) is only available through the OpenAI-compatible Responses / Chat Completions APIs, **not** the Converse API this example uses via the Strands Bedrock provider. Reaching Flex pricing would require switching to that API path; as written, this example runs on the Standard tier.
 - **Quality:** within 1-3 points of all three on Artificial Analysis's overall index, and #1 on LMArena's Frontend Code Arena.
 - **Where it trails:** 6-9 points behind on broader knowledge-work evaluations such as the Vals Index. A strong default for coding and long-context agent work; test it against your own tasks before swapping it in everywhere.
 
